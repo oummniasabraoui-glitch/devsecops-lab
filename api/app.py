@@ -3,30 +3,26 @@ import sqlite3
 
 app = Flask(__name__)
 
-def get_db_connection():
-    conn = sqlite3.connect("users.db")
-    conn.row_factory = sqlite3.Row
-    return conn
-
 @app.route("/login", methods=["POST"])
 def login():
-    data = request.get_json()
-    username = data.get("username")
-    password = data.get("password")
+    username = request.json.get("username")
+    password = request.json.get("password")
 
-    conn = get_db_connection()
+    conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
 
-    # Secure query – prevents SQL injection using parameters
-    query = "SELECT * FROM users WHERE username = ? AND password = ?"
-    cursor.execute(query, (username, password))
+    # Vulnérabilité 1 : SQL Injection volontaire
+    query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
+    cursor.execute(query)
     result = cursor.fetchone()
 
     if result:
+        # Vulnérabilité 2 : Pas de token, pas de session sécurisée
         return {"status": "success", "user": username}
 
+    # Vulnérabilité 3 : Message d’erreur trop détaillé
     return {"status": "error", "message": "Invalid credentials"}
 
-
+# Vulnérabilité 4 : Mode debug activé en production
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True, host="0.0.0.0")
